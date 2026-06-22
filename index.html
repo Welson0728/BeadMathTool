@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Bead Counting Tool</title>
+
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background: #f2f2f2;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .tool {
+      width: min(96vw, 920px);
+      height: 100dvh;
+      margin: 0 auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .top-panel {
+      position: relative;
+      min-height: 112px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .display {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: #222;
+      line-height: 1.15;
+      padding: 0 92px;
+      width: 100%;
+    }
+
+    .number-line {
+      font-size: clamp(42px, 7vw, 70px);
+      font-weight: 800;
+      letter-spacing: 3px;
+    }
+
+    .word-line {
+      margin-top: 4px;
+      min-height: 28px;
+      font-size: clamp(18px, 2.8vw, 26px);
+      font-weight: 800;
+      letter-spacing: .5px;
+      padding: 0 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .lang-switch {
+      position: absolute;
+      right: 0;
+      top: 8px;
+      display: flex;
+      gap: 5px;
+      z-index: 100;
+      background: #ffffff;
+      padding: 5px;
+      border-radius: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.10);
+    }
+
+    .lang-btn {
+      min-width: 42px;
+      height: 34px;
+      border-radius: 10px;
+      border: 2px solid #222;
+      background: #fff;
+      color: #111;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .lang-btn.active {
+      background: #222;
+      color: #fff;
+    }
+
+    .workspace {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      border: 3px dashed #cfcfcf;
+      border-radius: 18px;
+      background: #ffffff;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .stand-stage {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      height: 92%;
+      aspect-ratio: 979 / 1011;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .stand {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .rod-label {
+      position: absolute;
+      bottom: 4.3%;
+      transform: translateX(-50%);
+      z-index: 8;
+      font-size: clamp(14px, 2.2vw, 22px);
+      font-weight: 900;
+      color: #222;
+      background: rgba(255, 255, 255, .72);
+      border-radius: 8px;
+      padding: 2px 7px;
+      line-height: 1.1;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .rod-label.hidden {
+      display: none;
+    }
+
+    .placed-bead {
+      position: absolute;
+      width: 12.2%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .tray {
+      flex: 0 0 104px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      padding: 8px;
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    }
+
+    .source-card {
+      width: 108px;
+      height: 86px;
+      display: grid;
+      place-items: center;
+      gap: 2px;
+      border: 2px solid #ececec;
+      border-radius: 14px;
+      background: #ffffff;
+      font-size: 17px;
+      font-weight: 800;
+      color: #222;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .source-card:active {
+      cursor: grabbing;
+      transform: scale(.98);
+    }
+
+    .source-img {
+      width: 54px;
+      height: 54px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .reset-btn {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      z-index: 50;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 2px solid #333;
+      background: #fff;
+      color: #111;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+
+    .reset-btn:active { transform: scale(.98); }
+
+    .ghost {
+      position: fixed;
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 999;
+      opacity: .95;
+    }
+
+    @media (max-width: 700px) {
+      .tool {
+        width: 100vw;
+        padding: 8px;
+      }
+
+      .top-panel {
+        min-height: 106px;
+      }
+
+      .display {
+        padding: 0 4px;
+        padding-top: 28px;
+      }
+
+      .number-line {
+        font-size: clamp(38px, 12vw, 58px);
+      }
+
+      .word-line {
+        font-size: clamp(17px, 5vw, 23px);
+        min-height: 24px;
+        line-height: 1.2;
+      }
+
+      .lang-switch {
+        right: 6px;
+        top: 0;
+        gap: 4px;
+        padding: 4px;
+      }
+
+      .lang-btn {
+        min-width: 38px;
+        height: 30px;
+        font-size: 13px;
+      }
+
+      .workspace {
+        min-height: 0;
+      }
+
+      .stand-stage {
+        height: 91%;
+      }
+
+      .tray {
+        flex: 0 0 96px;
+        justify-content: flex-start;
+        overflow-x: auto;
+        gap: 8px;
+      }
+
+      .source-card {
+        min-width: 86px;
+        height: 78px;
+        font-size: 15px;
+      }
+
+      .source-img {
+        width: 48px;
+        height: 48px;
+      }
+
+      .placed-bead {
+        width: 13.4%;
+      }
+
+      .rod-label {
+        bottom: 4.1%;
+        font-size: clamp(14px, 4vw, 19px);
+        padding: 2px 6px;
+      }
+
+      .ghost {
+        width: 58px;
+        height: 58px;
+      }
+
+      .reset-btn {
+        right: 10px;
+        bottom: 10px;
+        font-size: 13px;
+        padding: 7px 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="tool">
+    <section class="top-panel">
+      <div class="lang-switch" aria-label="Language switch">
+        <button class="lang-btn active" type="button" data-lang="num">NUM</button>
+        <button class="lang-btn" type="button" data-lang="zh">ZH</button>
+        <button class="lang-btn" type="button" data-lang="bm">BM</button>
+      </div>
+
+      <div class="display">
+        <div class="number-line" id="numberDisplay">0</div>
+        <div class="word-line" id="wordDisplay"></div>
+      </div>
+    </section>
+
+    <section class="workspace" id="workspace">
+      <div class="stand-stage" id="standStage">
+        <img class="stand" src="assets/frame.png" alt="Counting frame" />
+        <div class="rod-label hidden" data-label-rod="0"></div>
+        <div class="rod-label hidden" data-label-rod="1"></div>
+        <div class="rod-label hidden" data-label-rod="2"></div>
+      </div>
+      <button class="reset-btn" id="resetBtn" type="button">Reset</button>
+    </section>
+
+    <section class="tray">
+      <div class="source-card" data-rod="0">
+        <img class="source-img" src="assets/bead_purple.png" alt="100 bead" />
+        <span>100</span>
+      </div>
+      <div class="source-card" data-rod="1">
+        <img class="source-img" src="assets/bead_orange.png" alt="10 bead" />
+        <span>10</span>
+      </div>
+      <div class="source-card" data-rod="2">
+        <img class="source-img" src="assets/bead_green.png" alt="1 bead" />
+        <span>1</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const workspace = document.getElementById("workspace");
+    const standStage = document.getElementById("standStage");
+    const numberDisplay = document.getElementById("numberDisplay");
+    const wordDisplay = document.getElementById("wordDisplay");
+    const resetBtn = document.getElementById("resetBtn");
+    const sources = document.querySelectorAll(".source-card");
+    const rodLabels = document.querySelectorAll(".rod-label");
+    const langButtons = document.querySelectorAll(".lang-btn");
+
+    /*
+      Rod order:
+      0 = hundreds = purple
+      1 = tens     = orange / yellow
+      2 = ones     = green
+
+      Density tuning:
+      - gapPc controls PC view density.
+      - gapMobile controls mobile view density.
+      - smaller gap = beads are closer / denser.
+      - bigger gap = beads are more open.
+    */
+    const rods = [
+      {
+        value: 100,
+        count: 0,
+        x: 25.0,
+        img: "assets/bead_purple.png",
+        bottomY: 71.5,
+        gapPc: 6.2,
+        gapMobile: 6.2
+      },
+      {
+        value: 10,
+        count: 0,
+        x: 50.1,
+        img: "assets/bead_orange.png",
+        bottomY: 71.5,
+        gapPc: 5.7,
+        gapMobile: 5.7
+      },
+      {
+        value: 1,
+        count: 0,
+        x: 75.0,
+        img: "assets/bead_green.png",
+        bottomY: 71.5,
+        gapPc: 5.2,
+        gapMobile: 5.7
+      }
+    ];
+
+    const languageData = {
+      num: {
+        labels: ["", "", ""],
+        showLabels: false,
+        words: numberToNum
+      },
+      zh: {
+        labels: ["百", "十", "个"],
+        showLabels: true,
+        words: numberToChinese
+      },
+      bm: {
+        labels: ["ratus", "puluh", "sa"],
+        showLabels: true,
+        words: numberToMalay
+      }
+    };
+
+    let currentLang = "num";
+    let currentDrag = null;
+
+    rodLabels.forEach(label => {
+      const index = Number(label.dataset.labelRod);
+      label.style.left = rods[index].x + "%";
+    });
+
+    langButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        setLanguage(button.dataset.lang);
+      });
+    });
+
+    sources.forEach(source => source.addEventListener("pointerdown", startDragFromTray));
+    resetBtn.addEventListener("click", reset);
+    resetBtn.addEventListener("pointerdown", e => e.stopPropagation());
+
+    function setLanguage(lang) {
+      currentLang = lang;
+
+      langButtons.forEach(button => {
+        button.classList.toggle("active", button.dataset.lang === lang);
+      });
+
+      const data = languageData[lang];
+
+      rodLabels.forEach((label, index) => {
+        label.textContent = data.labels[index];
+        label.classList.toggle("hidden", !data.showLabels);
+      });
+
+      updateNumber();
+    }
+
+    function startDragFromTray(e) {
+      e.preventDefault();
+
+      const source = e.currentTarget;
+      const rodIndex = Number(source.dataset.rod);
+      const img = source.querySelector("img");
+
+      const ghost = document.createElement("img");
+      ghost.src = img.src;
+      ghost.className = "ghost";
+      document.body.appendChild(ghost);
+
+      currentDrag = { rodIndex, ghost };
+      moveGhost(e.clientX, e.clientY);
+
+      source.setPointerCapture(e.pointerId);
+      source.addEventListener("pointermove", dragMove);
+      source.addEventListener("pointerup", dragEnd);
+      source.addEventListener("pointercancel", dragEnd);
+    }
+
+    function dragMove(e) {
+      if (!currentDrag) return;
+      moveGhost(e.clientX, e.clientY);
+    }
+
+    function dragEnd(e) {
+      if (!currentDrag) return;
+
+      const source = e.currentTarget;
+      source.removeEventListener("pointermove", dragMove);
+      source.removeEventListener("pointerup", dragEnd);
+      source.removeEventListener("pointercancel", dragEnd);
+
+      const rect = workspace.getBoundingClientRect();
+      const isInside =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+
+      if (isInside) {
+        addBead(currentDrag.rodIndex);
+      }
+
+      currentDrag.ghost.remove();
+      currentDrag = null;
+    }
+
+    function moveGhost(x, y) {
+      currentDrag.ghost.style.left = x + "px";
+      currentDrag.ghost.style.top = y + "px";
+    }
+
+    function isMobileView() {
+      return window.matchMedia("(max-width: 700px)").matches;
+    }
+
+    function getBeadY(rod, slot) {
+      const gap = isMobileView() ? rod.gapMobile : rod.gapPc;
+      return rod.bottomY - (slot * gap);
+    }
+
+    function addBead(rodIndex) {
+      const rod = rods[rodIndex];
+      if (rod.count >= 9) return;
+
+      const bead = document.createElement("img");
+      bead.src = rod.img;
+      bead.className = "placed-bead";
+      bead.dataset.rod = rodIndex;
+
+      const slot = rod.count;
+      bead.style.left = rod.x + "%";
+      bead.style.top = getBeadY(rod, slot) + "%";
+
+      standStage.appendChild(bead);
+      rod.count++;
+      updateNumber();
+    }
+
+    function getTotal() {
+      return rods.reduce((sum, rod) => sum + rod.count * rod.value, 0);
+    }
+
+    function updateNumber() {
+      const total = getTotal();
+      numberDisplay.textContent = total.toString();
+      wordDisplay.textContent = languageData[currentLang].words(total);
+    }
+
+    function reset() {
+      standStage.querySelectorAll(".placed-bead").forEach(bead => bead.remove());
+      rods.forEach(rod => rod.count = 0);
+      updateNumber();
+    }
+
+    function numberToNum(n) {
+      return "";
+    }
+
+    function numberToMalay(n) {
+      const ones = ["sifar", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "lapan", "sembilan"];
+
+      function under100(num) {
+        if (num < 10) return ones[num];
+        if (num === 10) return "sepuluh";
+        if (num === 11) return "sebelas";
+        if (num < 20) return ones[num - 10] + " belas";
+
+        const puluh = Math.floor(num / 10);
+        const sa = num % 10;
+        return ones[puluh] + " puluh" + (sa ? " " + ones[sa] : "");
+      }
+
+      if (n === 0) return "sifar";
+      if (n < 100) return under100(n);
+
+      const ratus = Math.floor(n / 100);
+      const baki = n % 100;
+
+      let text = ratus === 1 ? "seratus" : ones[ratus] + " ratus";
+      if (baki > 0) text += " " + under100(baki);
+      return text;
+    }
+
+    function numberToChinese(n) {
+      const digit = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+
+      if (n === 0) return "零";
+
+      const h = Math.floor(n / 100);
+      const t = Math.floor((n % 100) / 10);
+      const o = n % 10;
+
+      let text = "";
+
+      if (h > 0) {
+        text += digit[h] + "百";
+
+        if (t === 0 && o > 0) {
+          text += "零" + digit[o];
+        } else if (t > 0) {
+          text += digit[t] + "十";
+          if (o > 0) text += digit[o];
+        }
+      } else {
+        if (t > 0) {
+          text += (t === 1 ? "" : digit[t]) + "十";
+          if (o > 0) text += digit[o];
+        } else if (o > 0) {
+          text += digit[o];
+        }
+      }
+
+      return text;
+    }
+
+    setLanguage("num");
+  </script>
+</body>
+</html>
